@@ -1,6 +1,5 @@
 var mongoose = require('mongoose')
-var Yo = require('yo-api');
-var yo = new Yo(YO_AUTH_TOKEN_HERE);
+var YoService = require('../services/YoService');
 
 // Schema
 var Schema = mongoose.Schema;
@@ -26,13 +25,7 @@ module.exports = function(app){
 				console.log("Error: " + err);
 				res.json({userCreateError: err.message});
 			} else {
-				yo.yo(newUser.yoUsername, function(err, yoRes, body){
-					if (err){
-						res.json({sendYoError: err.message});
-					} else {
-						res.json({success: "User " + newUser.yoUsername + " successfully created."});
-					}
-				});
+				YoService.sendYo(newUser.yoUsername);
 			}
 		});
 	});
@@ -46,15 +39,16 @@ module.exports = function(app){
 
 		User.findOneAndUpdate({yoUsername: req.param('username')}, usrObjUpdate, function(err, user){
 			if (err) res.json({userUpdateError: err.message});
-			// This line will keep me up at night
-			if (!req.param('itinerary')) var responseURL = user.currentLoc ? (user.endLoc ? "http://generating-your.yoadtrip" : "http://send-your.destination") : (user.endLoc ? "http://send-your-current.location" : "http://send-your-current-location-and.destination");
-			
 
-			yo.yo_link(user.yoUsername, responseURL, function(err, yoRes, body){
-				if (err) res.json({sendYoOnUpdateError: err.message});
+			var responseURL = '';
+			// Generates a fake link with a message to send via Yo
+			if(!(user.endLoc && user.currentLoc)){
+				responseURL += 'http://MissingInfoNeededFor.Itinerary';
+			} else {
+				response += 'http://Generating.Itinerary';
+			}
 
-
-			});
+			YoService.sendYoLink(user.yoUsername, responseURL);
 		});
 	});
 }
